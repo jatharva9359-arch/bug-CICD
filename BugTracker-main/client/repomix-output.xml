@@ -1,0 +1,2485 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: src
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+src/App.jsx
+src/components/BugContainer/AsigneeElements/index.jsx
+src/components/BugContainer/BugAssigneeElements/index.jsx
+src/components/BugContainer/BugRows/index.jsx
+src/components/BugContainer/BugTable/index.jsx
+src/components/BugContainer/MyBugs/index.jsx
+src/components/BugContainer/NewBugForm/index.jsx
+src/components/DashboardContainer/index.jsx
+src/components/DashboardWidgets/index.jsx
+src/components/Loading/index.jsx
+src/components/PieChartDashboard/index.jsx
+src/components/ReportBugContainer/index.jsx
+src/components/SearchFilter/index.jsx
+src/components/SideBar/index.jsx
+src/components/SideBarContent/index.jsx
+src/components/StatsSummary/index.jsx
+src/components/TopNavigation/index.jsx
+src/hooks/useDarkMode.jsx
+src/index.css
+src/index.js
+src/services/BugsService.js
+src/services/SortAndFilter.js
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/App.jsx">
+import DashboardContainer from './components/DashboardContainer';
+import SideBar from './components/SideBar';
+import { useAuth0 } from '@auth0/auth0-react';
+import TopNavigation from './components/TopNavigation'
+import React, { useEffect, useState } from 'react';
+import Loading from './components/Loading';
+import BugTable from './components/BugContainer/BugTable';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import MyBugs from './components/BugContainer/MyBugs'
+import ReportBugContainer from './components/ReportBugContainer';
+
+function App() {
+
+  const { isLoading, loginWithRedirect, isAuthenticated, user } = useAuth0();
+  const [foundUser, setFoundUser] = useState(null);
+
+  const baseURL = 'http://localhost:9090/users/';
+
+
+
+  const postUser = (payload) => {
+    return fetch(baseURL, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json'}
+    })
+    .then(res => res.json())
+    .then(data => setFoundUser(data));
+  }
+  
+  const checkUserInDB = () => {
+
+    const userData = {
+      "auth0Sub": user.sub,
+      "name": user.name,
+      "nickname": user.nickname,
+      "email": user.email,
+      "role": user["http://demozero.net/roles"][0]
+    };
+
+    postUser(userData);
+  }
+
+  useEffect(() => {
+    if(isAuthenticated){
+      checkUserInDB();
+    }
+  }, [user])
+  
+
+
+  if (isLoading) return <Loading />
+
+  return (
+    !isAuthenticated &&(loginWithRedirect()),
+    <>
+      <Router>
+        <TopNavigation />
+        <SideBar />
+        <Routes>
+          <Route exact path='/' element={<DashboardContainer foundUserSub={user.sub}/>} />
+          <Route exact path='bugs' element={<BugTable />} />
+          <Route exact path='mybugs' element={<MyBugs foundUserSub={user.sub} />} />
+          <Route exact path='report' element={<ReportBugContainer />}/>
+        </Routes>
+    </Router>
+  </>
+  );
+}
+
+export default App;
+</file>
+
+<file path="src/components/BugContainer/AsigneeElements/index.jsx">
+import { useState } from "react";
+
+const AssigneeElements = ({ bug, onRemoveAssignee, bugIndex }) => {
+  return bug.assignees.map((assignee, index) => {
+    return (
+      <div key={index} className="flex flex-col">
+      <div>
+        <div className="text-sm font-medium text-gray-900 dark:text-[#9c9c9c]"><b>{assignee.name}</b></div>
+        <div className="text-sm text-gray-500 dark:text-[#9c9c9c]">{assignee.email}</div>
+        </div>
+        <button className="text-xs text-[#c4242c]" value={index} id={bugIndex} onClick={onRemoveAssignee}>
+          Remove
+        </button>
+      </div>
+    );
+  });
+};
+
+export default AssigneeElements;
+</file>
+
+<file path="src/components/BugContainer/BugAssigneeElements/index.jsx">
+import React from "react";
+
+const BugAssigneeElements = ({bug}) => {
+    return bug.assignees.map((assignee, index) => {
+      <>
+        {/* <div className="text-sm font-medium text-gray-900"> */}
+          {assignee.name}
+        {/* </div> */}
+        {/* <div className="text-sm text-gray-500"> */}
+          {assignee.email}
+        {/* </div> */}
+      </>
+    })
+  }
+
+export default BugAssigneeElements;
+</file>
+
+<file path="src/components/BugContainer/BugRows/index.jsx">
+import AssigneeElements from "../AsigneeElements";
+import { useState, useEffect } from "react";
+import { RiDeleteBin6Line } from 'react-icons/ri'
+import { BsCheck, BsX } from 'react-icons/bs'
+
+const BugRows = ({
+  bugsToRender,
+  isEditing,
+  checked,
+  handleOnChange,
+  handleToggleActive,
+  removeBug,
+  handleChangePriority,
+  onAddAssignee,
+  onRemoveAssignee,
+  allUsers,
+  addUserFieldValue,
+}) => {
+  const userOptions = (bug) => {
+    const usersToRender = allUsers.filter((user) => {
+      for (const assignee of bug.assignees) {
+        if (user.id == assignee.id) {
+          return false;
+        }
+      }
+      return true;
+    });
+    return usersToRender.map((user, index) => {
+      return (
+        <option key={index} value={user.id}>
+          {user.name}
+        </option>
+      );
+    });
+  };
+
+  const getPriorityBadge = (priority) => {
+    switch(priority) {
+      case 'high':
+        return <span className="badge-high">⚡ High</span>;
+      case 'medium':
+        return <span className="badge-medium">⚙️ Medium</span>;
+      case 'low':
+        return <span className="badge-low">✓ Low</span>;
+      default:
+        return <span className="badge-low">{priority}</span>;
+    }
+  };
+
+  return bugsToRender.map((bug, index) => {
+    let status = "Open";
+    if (bug.active) {
+      status = "Open";
+    } else {
+      status = "Closed";
+    }
+    return (
+      <tr className="table-row" key={index}>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="flex items-center gap-2">
+            {isEditing == true ? (
+              <input
+                id={`custom-checkbox-${index}`}
+                className="mr-2 cursor-pointer"
+                name={bug.name}
+                value={bug.name}
+                type="checkbox"
+                checked={checked[index]}
+                onChange={() => handleOnChange(index)}
+              />
+            ) : (
+              isEditing == false
+            )}
+            <div className="ml-2">
+              <AssigneeElements
+                bug={bug}
+                onRemoveAssignee={onRemoveAssignee}
+                bugIndex={index}
+              />
+              <select
+                value={addUserFieldValue}
+                id={index}
+                onChange={onAddAssignee} 
+                className="filter-dropdown text-sm mt-2 w-full"
+              >
+                <option value="" hidden disabled>
+                  + add assignee
+                </option>
+                {userOptions(bug)}
+              </select>
+            </div>
+          </div>
+        </td>
+        <td className="px-6 py-4">
+          <div className="text-sm font-medium text-gray-900 dark:text-gray-200 max-w-xs truncate" title={bug.description}>
+            {bug.description}
+          </div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          {getPriorityBadge(bug.priority)}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <button 
+            value={index} 
+            onClick={handleToggleActive} 
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition-all duration-200 ${
+              bug.active
+                ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-200'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200'
+            }`}
+          >
+            {bug.active ? (
+              <>
+                <BsCheck size={16} />
+                Open
+              </>
+            ) : (
+              <>
+                <BsX size={16} />
+                Closed
+              </>
+            )}
+          </button>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="text-sm text-gray-900 dark:text-gray-200">
+            <b className="font-semibold">{bug.reporter.name}</b>
+            <br/>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{bug.reporter.role}</span>
+          </div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-lg">
+            {bug.dateReported}
+          </span>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-right">
+          <button 
+            value={index} 
+            onClick={() => removeBug(bug.id)}
+            className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-all duration-200 group"
+            title="Delete issue"
+          >
+            <RiDeleteBin6Line
+              size={18}
+              className='text-gray-400 dark:text-gray-500 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors'
+            />
+          </button>
+        </td>
+      </tr>
+    );
+  });
+};
+
+export default BugRows;
+</file>
+
+<file path="src/components/BugContainer/BugTable/index.jsx">
+import React, { useState, useEffect } from "react";
+import { useAuth0 } from "@auth0/auth0-react";
+import NewBugForm from "../NewBugForm";
+import BugRows from "../BugRows";
+import { filterByPriority, filterByActive, sortByDate, sortByPriority  } from "../../../services/SortAndFilter";
+import { deleteBug, patchBug } from "../../../services/BugsService";
+import { GrFilter } from 'react-icons/gr';
+import { MdSort } from 'react-icons/md';
+
+
+const BugTable = () => {
+  const { user } = useAuth0();
+  const [allBugs, setAllBugs] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [bugsToRender, setBugsToRender] = useState([]);
+  const [priorityFilter, setPriorityFilter] = useState("clear");
+  const [activeFilter, setActiveFilter] = useState("clear");
+  const [dateSort, setDateSort] = useState("clear");
+  const [prioritySort, setPrioritySort] = useState("clear");
+  const [isAddingBug, setIsAddingBug] = useState(false);
+  const [allUsers, setAllUsers] = useState([]);
+  const [addUserFieldValue, setAddUserFieldValue] = useState("");
+
+  const [checked, setChecked] = useState(
+    new Array({allBugs}.length).fill(false)
+  );
+
+  const onRemoveAssignee = (event) => {
+    const assigneeIndex = event.target.value;
+    const editedBug = bugsToRender[event.target.id];
+
+    const editedBugIndex = allBugs.indexOf(editedBug);
+
+    editedBug.assignees.splice(assigneeIndex, 1);
+    patchBug(editedBug);
+
+    const newBugList = [...allBugs];
+    newBugList[editedBugIndex] = editedBug;
+    setAllBugs(newBugList);
+  }
+
+  useEffect(() => {
+    getAllUsers();
+  }, []);
+
+  const getAllUsers = () => {
+    fetch("http://localhost:9090/users")
+      .then((result) => result.json())
+      .then((data) => setAllUsers(data));
+  };
+
+  const onBugAddition = (newBug) => {
+    //Generate date to display
+    var today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth()).padStart(2, '0');
+    const yyyy = today.getFullYear();
+    today = yyyy + mm + dd;
+
+    //Fill in missing fields to allow render
+    newBug['dateReported'] = today;
+    newBug['assignees'] = [];
+    newBug['active'] = true;
+
+    const updatedBugs = [...allBugs, newBug];
+    setAllBugs(updatedBugs);
+  }
+
+  const onAddAssignee = (event) => {
+    const editedBug = bugsToRender[event.target.id];
+    const newAssigneeId = event.target.value;
+    var newAssignee;
+    for(const user of allUsers){
+      if(user.id == newAssigneeId){
+        newAssignee = user;
+        break;
+      }
+    }
+    editedBug.assignees.push(newAssignee);
+    patchBug(editedBug);
+    const updatedList = [...allBugs];
+    const bugIndex = updatedList.findIndex(bug => bug.id == editedBug.id);
+    updatedList[bugIndex] = editedBug;
+    setAllBugs(updatedList);
+  }
+
+  useEffect(() => {
+    getAllBugs();
+  }, []);
+
+  useEffect(() => {
+    setBugsToRender(allBugs);
+    setActiveFilter("clear");
+    setPriorityFilter("clear");
+    setDateSort("clear");
+    setPrioritySort("clear");
+  }, [allBugs]);
+
+  const getAllBugs = () => {
+    fetch("http://localhost:9090/bugs")
+    .then((result) => result.json())
+    .then((data) => {
+      setAllBugs(data);
+      setBugsToRender(data);
+    });
+  };
+
+  const handleEditingClick = () => {
+    if (isEditing == false) {
+      setIsEditing(true)
+    } else {
+      setIsEditing(false);
+    }
+  }
+
+  const handleChangePriority = (event) => {
+    const editedBug = bugsToRender[event.target.id];
+    const editedBugIndex = allBugs.indexOf(editedBug);
+    const updatedList = [...allBugs];
+    updatedList[editedBugIndex].priority = event.target.value;
+    setAllBugs(updatedList);
+    patchBug(editedBug);
+  }
+
+  const handleOnChange = (position) => {
+    const updatedCheckState = checked.map((item, index) =>
+    index === position ? !item : item
+    );
+
+    setChecked(updatedCheckState);
+  };
+
+  const handleToggleActive = (event) => {
+
+    //Find toggled bug and flip value
+    const toggledBug = bugsToRender[event.target.value];
+    const toggledBugIndex = allBugs.indexOf(toggledBug);
+    toggledBug.active = !toggledBug.active;
+
+    const updatedBugsList = [...allBugs];
+    updatedBugsList[toggledBugIndex] = toggledBug;
+    patchBug(toggledBug)
+    .then(setAllBugs(updatedBugsList));
+  }
+
+  const removeBug = (id) => {
+    const temp = allBugs.map(s => s);
+    const indexToDel = temp.map(s => s.id).indexOf(id);
+    
+    temp.splice(indexToDel, 1);
+    setAllBugs(temp);
+    deleteBug(id);
+  }
+
+  const toggleAdding = () => {
+    isAddingBug == false ? setIsAddingBug(true) : setIsAddingBug(false)
+  }
+
+  const onFilterByPriority = (event) => {
+    setPriorityFilter(event.target.value);
+    setActiveFilter("clear");
+    setDateSort("clear");
+    setPrioritySort("clear");
+    if (event.target.value === "clear"){
+      setBugsToRender(allBugs);
+    }
+    else{
+      setBugsToRender(filterByPriority(allBugs, event.target.value));
+    }
+  } 
+
+  const onFilterByActive = (event) => {
+    const selectedOption = event.target.value;
+    setActiveFilter(selectedOption);
+    setPriorityFilter("clear");
+    setDateSort("clear");
+    setPrioritySort("clear");
+    if (selectedOption === "clear"){
+      setBugsToRender(allBugs);
+    }
+    else{
+      setBugsToRender(filterByActive(allBugs, (selectedOption === "true")));
+    }
+  }
+
+  const onSortByDate = (event) => {
+    setPrioritySort("clear");
+    setDateSort(event.target.value);
+    setBugsToRender(sortByDate(bugsToRender, (event.target.value === "newestFirst")));
+  }
+
+  const onSortByPriority = (event) => {
+    setDateSort("clear");
+    setPrioritySort(event.target.value);
+    setBugsToRender(sortByPriority(bugsToRender, (event.target.value === "highestFirst")));
+  }
+
+  return (
+    <div className='ml-72 pt-24 pb-16 pr-10 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-950 dark:to-gray-950 min-h-screen'>
+
+    <div className='max-w-7xl mx-auto'>
+
+    <div className='mb-10 animate-slide-down'>
+      <h1 className="text-5xl font-bold bg-gradient-orange bg-clip-text text-transparent">All Issues</h1>
+      <p className="text-gray-600 dark:text-gray-400 mt-3 text-lg">Manage and track all reported issues</p>
+      <div className='h-1 w-16 bg-gradient-orange rounded-full mt-4'></div>
+    </div>
+
+    <div className={`${isAddingBug == true ? 'backdrop-blur-xl' : ''}`}>
+    <div className="flex flex-col dark:text-white">
+      
+      {/* Filters Section */}
+      <div className="mb-6 p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-md border border-gray-100 dark:border-gray-800">
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex items-center gap-2">
+            <GrFilter className="text-orange-500" />
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Filter by:</span> 
+          </div>
+          <select value={priorityFilter} onChange={onFilterByPriority} className="filter-dropdown">
+            <option value="clear" disabled hidden>
+              Priority
+            </option>
+            <option value="clear">show all</option>
+            <option value="high">high</option>
+            <option value="medium">medium</option>
+            <option value="low">low</option>
+          </select>
+          <select value={activeFilter} onChange={onFilterByActive} className="filter-dropdown">
+            <option value="clear" disabled hidden>
+              Status
+            </option>
+            <option value="clear">show all</option>
+            <option value="true">open</option>
+            <option value="false">closed</option>
+          </select>
+
+          <div className="ml-auto flex items-center gap-2">
+            <MdSort className="text-orange-500" />
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Sort by:</span>
+          </div>
+          <select value={dateSort} onChange={onSortByDate} className="filter-dropdown">
+            <option value="clear" disabled hidden>
+              Date
+            </option>
+            <option value="newestFirst">newest first</option>
+            <option value="oldestFirst">oldest first</option>
+          </select>
+          <select value={prioritySort} onChange={onSortByPriority} className="filter-dropdown">
+            <option value="clear" disabled hidden>
+              Priority
+            </option>
+            <option value="highestFirst">highest first</option>
+            <option value="lowestFirst">lowest first</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Table Section */}
+      <div className="-my-2 overflow-x-auto shadow-xl rounded-2xl border border-gray-100 dark:border-gray-800">
+        <div className="py-2 align-middle inline-block min-w-full px-6">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="table-header dark:bg-gray-800">
+              <tr>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest"
+                >
+                  Assignees
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest"
+                >
+                  Description
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest"
+                >
+                  Priority
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest"
+                >
+                  Status
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest"
+                >
+                  Reporter
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest"
+                >
+                  Date
+                </th>
+                <th scope="col" className="relative px-6 py-4">
+                  <span className="sr-only">Edit</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
+              <BugRows
+              bugsToRender={bugsToRender}
+              isEditing={isEditing}
+              checked={checked}
+              handleOnChange={handleOnChange}
+              handleToggleActive={handleToggleActive}
+              removeBug={removeBug}
+              handleChangePriority={handleChangePriority}
+              onAddAssignee={onAddAssignee}
+              allUsers={allUsers}
+              addUserFieldValue={addUserFieldValue}
+              onRemoveAssignee={onRemoveAssignee}
+              />
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* End Table Section */}
+    </div>
+    </div>
+
+    {/* End main content wrapper divs */}
+    </div>
+    </div>
+  );
+};
+
+
+export default BugTable;
+</file>
+
+<file path="src/components/BugContainer/MyBugs/index.jsx">
+import React, { useState, useEffect } from "react";
+import { useAuth0 } from "@auth0/auth0-react";
+import NewBugForm from "../NewBugForm";
+import BugRows from "../BugRows";
+import { filterByPriority, filterByActive, sortByDate, sortByPriority, filterByUser  } from "../../../services/SortAndFilter";
+import { deleteBug, patchBug } from "../../../services/BugsService";
+import { GrFilter } from 'react-icons/gr';
+import { MdSort } from 'react-icons/md';
+
+const BugTable = ({ foundUserSub }) => {
+  const { user } = useAuth0();
+  const [allBugs, setAllBugs] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [bugsToRender, setBugsToRender] = useState([]);
+  const [priorityFilter, setPriorityFilter] = useState("clear");
+  const [activeFilter, setActiveFilter] = useState("clear");
+  const [dateSort, setDateSort] = useState("clear");
+  const [prioritySort, setPrioritySort] = useState("clear");
+  const [isAddingBug, setIsAddingBug] = useState(false);
+  const [allUsers, setAllUsers] = useState([]);
+  const [addUserFieldValue, setAddUserFieldValue] = useState("");
+
+  const [checked, setChecked] = useState(
+    new Array({allBugs}.length).fill(false)
+  );
+
+  const onRemoveAssignee = (event) => {
+    const assigneeIndex = event.target.value;
+    const editedBug = bugsToRender[event.target.id];
+
+    const editedBugIndex = allBugs.indexOf(editedBug);
+
+    editedBug.assignees.splice(assigneeIndex, 1);
+    patchBug(editedBug);
+
+    const newBugList = [...allBugs];
+    newBugList[editedBugIndex] = editedBug;
+    setAllBugs(newBugList);
+  }
+
+  useEffect(() => {
+    getAllUsers();
+  }, []);
+
+  const getAllUsers = () => {
+    fetch("http://localhost:9090/users")
+      .then((result) => result.json())
+      .then((data) => setAllUsers(data));
+  };
+
+  const onBugAddition = (newBug) => {
+    //Generate date to display
+    var today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth()).padStart(2, '0');
+    const yyyy = today.getFullYear();
+    today = yyyy + mm + dd;
+
+    //Fill in missing fields to allow render
+    newBug['dateReported'] = today;
+    newBug['assignees'] = [];
+    newBug['active'] = true;
+
+    const updatedBugs = [...allBugs, newBug];
+    setAllBugs(updatedBugs);
+  }
+
+  const onAddAssignee = (event) => {
+    const editedBug = bugsToRender[event.target.id];
+    const newAssigneeId = event.target.value;
+    for(const user of allUsers){
+      if(user.id == newAssigneeId){
+        var newAssignee = user;
+        break;
+      }
+    }
+    editedBug.assignees.push(newAssignee);
+    patchBug(editedBug);
+    const updatedList = [...allBugs];
+    const bugIndex = updatedList.findIndex(bug => bug.id = editedBug.id);
+    updatedList[bugIndex] = editedBug;
+    setAllBugs(updatedList);
+    setAddUserFieldValue("");
+  }
+
+  useEffect(() => {
+    getAllBugs();
+  }, []);
+
+  useEffect(() => {
+    setBugsToRender(allBugs);
+    setActiveFilter("clear");
+    setPriorityFilter("clear");
+    setDateSort("clear");
+    setPrioritySort("clear");
+  }, [allBugs]);
+
+  const getAllBugs = () => {
+    fetch("http://localhost:9090/bugs")
+    .then((result) => result.json())
+    .then((data) => {
+      setAllBugs(filterByUser(data, foundUserSub));
+      setBugsToRender(filterByUser(data, foundUserSub));
+    });
+  };
+
+  const handleEditingClick = () => {
+    if (isEditing == false) {
+      setIsEditing(true)
+    } else {
+      setIsEditing(false);
+    }
+  }
+
+  const handleChangePriority = (event) => {
+    const editedBug = bugsToRender[event.target.id];
+    const editedBugIndex = allBugs.indexOf(editedBug);
+    const updatedList = [...allBugs];
+    updatedList[editedBugIndex].priority = event.target.value;
+    setAllBugs(updatedList);
+    patchBug(editedBug);
+  }
+
+  const handleOnChange = (position) => {
+    const updatedCheckState = checked.map((item, index) =>
+    index === position ? !item : item
+    );
+
+    setChecked(updatedCheckState);
+  };
+
+  const handleToggleActive = (event) => {
+
+    //Find toggled bug and flip value
+    const toggledBug = bugsToRender[event.target.value];
+    const toggledBugIndex = allBugs.indexOf(toggledBug);
+    toggledBug.active = !toggledBug.active;
+
+    const updatedBugsList = [...allBugs];
+    updatedBugsList[toggledBugIndex] = toggledBug;
+    patchBug(toggledBug)
+    .then(setAllBugs(updatedBugsList));
+  }
+
+  const removeBug = (id) => {
+    const temp = allBugs.map(s => s);
+    const indexToDel = temp.map(s => s.id).indexOf(id);
+    
+    temp.splice(indexToDel, 1);
+    setAllBugs(temp);
+    deleteBug(id);
+  }
+
+  const toggleAdding = () => {
+    isAddingBug == false ? setIsAddingBug(true) : setIsAddingBug(false)
+  }
+
+  const onFilterByPriority = (event) => {
+    setPriorityFilter(event.target.value);
+    setActiveFilter("clear");
+    setDateSort("clear");
+    setPrioritySort("clear");
+    if (event.target.value === "clear"){
+      setBugsToRender(allBugs);
+    }
+    else{
+      setBugsToRender(filterByPriority(allBugs, event.target.value));
+    }
+  } 
+
+  const onFilterByActive = (event) => {
+    const selectedOption = event.target.value;
+    setActiveFilter(selectedOption);
+    setPriorityFilter("clear");
+    setDateSort("clear");
+    setPrioritySort("clear");
+    if (selectedOption === "clear"){
+      setBugsToRender(allBugs);
+    }
+    else{
+      setBugsToRender(filterByActive(allBugs, (selectedOption === "true")));
+    }
+  }
+
+  const onSortByDate = (event) => {
+    setPrioritySort("clear");
+    setDateSort(event.target.value);
+    setBugsToRender(sortByDate(bugsToRender, (event.target.value === "newestFirst")));
+  }
+
+  const onSortByPriority = (event) => {
+    setDateSort("clear");
+    setPrioritySort(event.target.value);
+    setBugsToRender(sortByPriority(bugsToRender, (event.target.value === "highestFirst")));
+  }
+
+  return (
+
+    <div className='ml-72 pt-24 pb-16 pr-10 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-950 dark:to-gray-950 min-h-screen'>
+
+    <div className='max-w-7xl mx-auto'>
+
+    <div className='mb-10 animate-slide-down'>
+      <h1 className="text-5xl font-bold bg-gradient-orange bg-clip-text text-transparent">My Issues</h1>
+      <p className="text-gray-600 dark:text-gray-400 mt-3 text-lg">View and manage your assigned issues</p>
+      <div className='h-1 w-16 bg-gradient-orange rounded-full mt-4'></div>
+    </div>
+
+    <div className={`${isAddingBug == true ? 'backdrop-blur-xl' : ''}`}>
+    <div className="flex flex-col dark:text-white">
+      
+      {/* Filters Section */}
+      <div className="mb-6 p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-md border border-gray-100 dark:border-gray-800">
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex items-center gap-2">
+            <GrFilter className="text-orange-500" />
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Filter by:</span> 
+          </div>
+          <select value={priorityFilter} onChange={onFilterByPriority} className="filter-dropdown">
+            <option value="clear" disabled hidden>
+              Priority
+            </option>
+            <option value="clear">show all</option>
+            <option value="high">high</option>
+            <option value="medium">medium</option>
+            <option value="low">low</option>
+          </select>
+          <select value={activeFilter} onChange={onFilterByActive} className="filter-dropdown">
+            <option value="clear" disabled hidden>
+              Status
+            </option>
+            <option value="clear">show all</option>
+            <option value="true">open</option>
+            <option value="false">closed</option>
+          </select>
+
+          <div className="ml-auto flex items-center gap-2">
+            <MdSort className="text-orange-500" />
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Sort by:</span>
+          </div>
+          <select value={dateSort} onChange={onSortByDate} className="filter-dropdown">
+            <option value="clear" disabled hidden>
+              Date
+            </option>
+            <option value="newestFirst">newest first</option>
+            <option value="oldestFirst">oldest first</option>
+          </select>
+          <select value={prioritySort} onChange={onSortByPriority} className="filter-dropdown">
+            <option value="clear" disabled hidden>
+              Priority
+            </option>
+            <option value="highestFirst">highest first</option>
+            <option value="lowestFirst">lowest first</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Table Section */}
+      <div className="-my-2 overflow-x-auto shadow-xl rounded-2xl border border-gray-100 dark:border-gray-800">
+        <div className="py-2 align-middle inline-block min-w-full px-6">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="table-header dark:bg-gray-800">
+              <tr>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest"
+                >
+                  Assignees
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest"
+                >
+                  Description
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest"
+                >
+                  Priority
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest"
+                >
+                  Status
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest"
+                >
+                  Reporter
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest"
+                >
+                  Date
+                </th>
+                <th scope="col" className="relative px-6 py-4">
+                  <span className="sr-only">Edit</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
+              <BugRows
+              bugsToRender={bugsToRender}
+              isEditing={isEditing}
+              checked={checked}
+              handleOnChange={handleOnChange}
+              handleToggleActive={handleToggleActive}
+              removeBug={removeBug}
+              handleChangePriority={handleChangePriority}
+              onAddAssignee={onAddAssignee}
+              allUsers={allUsers}
+              addUserFieldValue={addUserFieldValue}
+              onRemoveAssignee={onRemoveAssignee}
+              />
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* End Table Section */}
+    </div>
+    </div>
+
+    {/* End main content wrapper divs */}
+    </div>
+    </div>
+  );
+};
+
+export default BugTable;
+</file>
+
+<file path="src/components/BugContainer/NewBugForm/index.jsx">
+import { useEffect, useState } from "react";
+import { postBug } from "../../../services/BugsService";
+import { MdNoteAdd } from 'react-icons/md';
+import { FiAlertCircle, FiUser } from 'react-icons/fi';
+
+const NewBugForm = ({ onBugAddition }) => {
+    const [allUsers, setAllUsers] = useState([]);
+    const [description, setDescription] = useState("");
+    const [priority, setPriority] = useState("");
+    const [reporter, setReporter] = useState("");
+  
+    useEffect(() => {
+      getAllUsers();
+    }, []);
+  
+    const getAllUsers = () => {
+      fetch("http://localhost:9090/users")
+        .then((result) => result.json())
+        .then((data) => setAllUsers(data));
+    };
+  
+    const userOptions = allUsers.map((user, index) => {
+      return (
+        <option value={index} key={index}>
+          {user.name}
+        </option>
+      );
+    });
+  
+    const onChange = (event) => {
+      if (event.target.id === "description") {
+        setDescription(event.target.value);
+      } else if (event.target.id === "priority") {
+        setPriority(event.target.value);
+      } else if (event.target.id === "reporter") {
+        setReporter(event.target.value);
+      }
+    };
+  
+    const onSubmit = (event) => {
+      event.preventDefault();
+      if (priority && reporter) {
+        postBug(
+          {
+            description: description,
+            priority: priority,
+          },
+          allUsers[reporter]
+        );
+        const newBug = {
+          description: description,
+          priority: priority,
+          reporter: allUsers[reporter],
+        };
+        onBugAddition(newBug);
+        setDescription("");
+        setPriority("");
+        setReporter("");
+      }
+    };
+  
+    return (
+      <form onSubmit={onSubmit} className="w-full max-w-2xl">
+        <div className="space-y-8">
+          {/* Description Field */}
+          <div className="relative">
+            <label
+              className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide"
+              htmlFor="description"
+            >
+              <MdNoteAdd className='text-orange-500' size={18} />
+              Description
+            </label>
+            <textarea
+              onChange={onChange}
+              id="description"
+              value={description}
+              required
+              rows={4}
+              placeholder="Describe the bug in detail..."
+              className="form-input w-full resize-none"
+            />
+          </div>
+
+          {/* Priority and Reporter Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Priority Field */}
+            <div className="relative">
+              <label
+                className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide"
+                htmlFor="priority"
+              >
+                <FiAlertCircle className='text-orange-500' size={18} />
+                Severity
+              </label>
+              <select
+                className="form-select w-full"
+                onChange={onChange}
+                id="priority"
+                value={priority}
+                required
+              >
+                <option value="">Select severity level...</option>
+                <option value="high">🔴 High - Critical</option>
+                <option value="medium">🟡 Medium - Important</option>
+                <option value="low">🟢 Low - Minor</option>
+              </select>
+            </div>
+
+            {/* Reporter Field */}
+            <div className="relative">
+              <label
+                className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide"
+                htmlFor="reporter"
+              >
+                <FiUser className='text-orange-500' size={18} />
+                Reported By
+              </label>
+              <select
+                className="form-select w-full"
+                onChange={onChange}
+                id="reporter"
+                value={reporter}
+                required
+              >
+                <option value="">Select a user...</option>
+                {userOptions}
+              </select>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <div className="flex justify-start pt-4">
+            <button 
+              type="submit"
+              className="button-primary flex items-center gap-2"
+            >
+              <span>✓</span>
+              Submit Issue
+            </button>
+          </div>
+        </div>
+      </form>
+    );
+  };
+  
+  export default NewBugForm;
+</file>
+
+<file path="src/components/DashboardContainer/index.jsx">
+import TopNavigation from '../TopNavigation';
+import { BsPlusCircleFill } from 'react-icons/bs';
+import PieChart from '../PieChartDashboard';
+import AllWidgets from '../DashboardWidgets';
+import { useEffect, useState } from 'react';
+// import { useState } from 'react';
+
+const DashboardContainer = ({ foundUserSub }) => {
+
+  return (
+    <div className='ml-72 pt-24 pb-16 pr-10 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-950 dark:to-gray-950 min-h-screen'>
+
+    <div className='max-w-7xl mx-auto'>
+
+    <div className='mb-10 animate-slide-down'>
+      <h1 className="text-5xl font-bold bg-gradient-orange bg-clip-text text-transparent">Dashboard</h1>
+      <p className="text-gray-600 dark:text-gray-400 mt-3 text-lg">Welcome back! Here's your issue summary</p>
+      <div className='h-1 w-16 bg-gradient-orange rounded-full mt-4'></div>
+    </div>
+
+    <AllWidgets foundUserSub={foundUserSub}/>
+  
+
+   
+  
+
+    </div>
+
+
+  
+
+      
+    </div>
+  );
+};
+
+export default DashboardContainer;
+</file>
+
+<file path="src/components/DashboardWidgets/index.jsx">
+import { useState, useEffect } from "react";
+import { filterByPriority, filterByUser, filterForNoAssignees } from "../../services/SortAndFilter";
+import { PieChart } from "react-minimal-pie-chart";
+
+
+
+const AllWidgets = ({ foundUserSub }) => {
+
+
+    
+
+    const [allBugs, setAllBugs] = useState([]);
+    const [allBugsCount, setAllBugsCount] = useState(0);
+    const [myBugsCount, setMyBugsCount] = useState(0);
+    const [unassignedBugsCount, setUnassignedBugsCount] = useState(0);
+    const [highBugsCount, setHighBugsCount] = useState(0);
+    const [mediumBugsCount, setMediumBugsCount] = useState(0);
+    const [lowBugsCount, setLowBugsCount] = useState(0);
+
+    const getAllBugs = () => {
+        fetch("http://localhost:9090/bugs")
+        .then((result) => result.json())
+        .then((data) => {
+          setAllBugs(data);
+          setAllBugsCount(data.length);
+          setMyBugsCount(filterByUser(data, foundUserSub).length);
+          setUnassignedBugsCount(filterForNoAssignees(data).length);
+          setHighBugsCount(filterByPriority(data, "high").length);
+          setMediumBugsCount(filterByPriority(data, "medium").length);
+          setLowBugsCount(filterByPriority(data, "low").length);
+        });
+    };
+
+    useEffect(() => {
+        getAllBugs();
+    }, []);
+
+      
+    return ( 
+
+        <div className="flex flex-col gap-8">
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <TotalTickets allBugsCount={allBugsCount}/>
+        <MyTickets myBugsCount={myBugsCount}/>
+        <UnassignedTickets unassignedBugsCount={unassignedBugsCount}/>
+       </div>
+
+       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-8 border border-gray-100 dark:border-gray-800 hover:shadow-xl transition-all duration-300">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Priority Distribution</h3>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex-1 flex justify-center">
+            <PieChart
+              data={[
+                { title: 'High', value: highBugsCount, color: '#c62125' },
+                { title: 'Medium', value: mediumBugsCount, color: '#4486f5' },
+                { title: 'Low', value: lowBugsCount, color: '#1d946f' }
+              ]}
+              viewBoxSize={[100, 100]}
+              radius={20}
+              center={[50, 30]}
+            /> 
+          </div>
+          <div className="flex-1 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-4 h-4 rounded-full" style={{backgroundColor: '#c62125'}}></div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">High Priority</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{highBugsCount}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-4 h-4 rounded-full" style={{backgroundColor: '#4486f5'}}></div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Medium Priority</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{mediumBugsCount}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-4 h-4 rounded-full" style={{backgroundColor: '#1d946f'}}></div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Low Priority</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{lowBugsCount}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+       </div>
+    </div>
+     )}
+ 
+
+const TotalTickets = ({ allBugsCount }) => {
+    return ( 
+      <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-100 dark:border-gray-800 shadow-md hover:shadow-xl hover:scale-105 transition-all duration-300 group">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <p className="card-title">Total Open Tickets</p>
+            <p className="text-5xl font-bold text-orange-600 dark:text-orange-400 mt-2">{allBugsCount}</p>
+          </div>
+          <div className="text-4xl opacity-10 group-hover:opacity-20 transition-opacity">#</div>
+        </div>
+        <div className="mt-4 h-1 bg-gradient-orange rounded-full w-0 group-hover:w-full transition-all duration-500"></div>
+      </div>
+    );
+    }
+
+const MyTickets = ({ myBugsCount }) => {
+    return ( 
+      <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-100 dark:border-gray-800 shadow-md hover:shadow-xl hover:scale-105 transition-all duration-300 group">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <p className="card-title">My Open Tickets</p>
+            <p className="text-5xl font-bold text-blue-600 dark:text-blue-400 mt-2">{myBugsCount}</p>
+          </div>
+          <div className="text-4xl opacity-10 group-hover:opacity-20 transition-opacity">👤</div>
+        </div>
+        <div className="mt-4 h-1 bg-blue-500 rounded-full w-0 group-hover:w-full transition-all duration-500"></div>
+      </div>
+    );
+    }
+
+const UnassignedTickets = ({ unassignedBugsCount }) => {
+    return ( 
+      <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-100 dark:border-gray-800 shadow-md hover:shadow-xl hover:scale-105 transition-all duration-300 group">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <p className="card-title">Unassigned Tickets</p>
+            <p className="text-5xl font-bold text-purple-600 dark:text-purple-400 mt-2">{unassignedBugsCount}</p>
+          </div>
+          <div className="text-4xl opacity-10 group-hover:opacity-20 transition-opacity">⚠️</div>
+        </div>
+        <div className="mt-4 h-1 bg-purple-500 rounded-full w-0 group-hover:w-full transition-all duration-500"></div>
+      </div>
+    );
+    }
+
+ 
+  
+
+
+
+
+export default AllWidgets;
+</file>
+
+<file path="src/components/Loading/index.jsx">
+import React from "react";
+
+const loadingImg =
+  "https://cdn.auth0.com/blog/auth0-react-sample/assets/loading.svg";
+
+const Loading = () => (
+  <div className="absolute flex justify-center h-full w-full bg-white m-0">
+    <img src={loadingImg} alt="Loading..." />
+  </div>
+);
+
+export default Loading;
+</file>
+
+<file path="src/components/PieChartDashboard/index.jsx">
+import HighchartsReact from 'highcharts-react-official';
+import Highcharts from 'highcharts'
+
+
+const PieChart = () => {
+    
+    const distributionData = () => {
+        return {
+            name: 'name',
+            symbol: 'symbol',
+            y: 'y',
+            shares: 'shares'
+        }
+    }
+    
+    const options = {
+        chart: {
+            plotBackgroundColor: 'red',
+            plotBorderWidth: null,
+            plotShadow: false,
+            type: 'pie'
+        },
+        title: {
+            text:'Tickets by Status'
+        },
+        tooltip: {
+            pointFormat: 'Value: <b>$ {point.y: .2f}</b>, Shares: {point.shares}'
+        },
+        accessibility: {
+            point: {
+                valueSuffix: '%'
+            }
+        },
+        plotOptions: {
+            pie: {
+                allowPointSelect: false,
+                cursor: 'pointer',
+                dataLabels: {
+                    enabled: true,
+                    format:'{point.name} ({point.symbol}): {point.percentage: .1f} %'
+                }
+            }
+        },
+        credits: {
+            enabled: false
+        },
+        series:[{
+            name: 'Tickets',
+            colorByPoint: true,
+            data: distributionData
+        }]
+
+    }
+    
+    return (
+        <div className='pl-44 pt-44' >
+
+        
+
+        {/* <HighchartsReact highcharts={Highcharts} options={options} /> */}
+        </div>
+    )}
+
+export default PieChart
+</file>
+
+<file path="src/components/ReportBugContainer/index.jsx">
+import NewBugForm from "../BugContainer/NewBugForm";
+
+const ReportBugContainer = () => {
+
+  const onBugAddition = (newBug) => {
+    //Generate date to display
+    var today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth()).padStart(2, '0');
+    const yyyy = today.getFullYear();
+    today = yyyy + mm + dd;
+
+    //Fill in missing fields to allow render
+    newBug['dateReported'] = today;
+    newBug['assignees'] = [];
+    newBug['active'] = true;
+
+  }
+
+  return (
+    <div className='ml-72 pt-24 pb-16 pr-10 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-950 dark:to-gray-950 min-h-screen'>
+
+    <div className='max-w-7xl mx-auto'>
+
+    <div className='mb-10 animate-slide-down'>
+      <h1 className="text-5xl font-bold bg-gradient-orange bg-clip-text text-transparent">Report Issue</h1>
+      <p className="text-gray-600 dark:text-gray-400 mt-3 text-lg">Create a new issue and track it</p>
+      <div className='h-1 w-16 bg-gradient-orange rounded-full mt-4'></div>
+    </div>
+
+    <div className="flex flex-col justify-center items-center pt-8 pb-12 bg-white shadow-xl dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 px-8 md:px-12 py-12">
+
+      <NewBugForm onBugAddition={onBugAddition} />
+
+      </div>
+
+   
+  
+
+    </div>
+
+      
+    </div>
+  );
+};
+
+export default ReportBugContainer;
+</file>
+
+<file path="src/components/SearchFilter/index.jsx">
+import React, { useState } from 'react';
+import { FaSearch } from 'react-icons/fa';
+
+const SearchFilter = ({ onSearch, onFilter }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterPriority, setFilterPriority] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+
+  const handleSearch = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    onSearch(value);
+  };
+
+  const handlePriorityFilter = (e) => {
+    const value = e.target.value;
+    setFilterPriority(value);
+    onFilter({ priority: value, status: filterStatus });
+  };
+
+  const handleStatusFilter = (e) => {
+    const value = e.target.value;
+    setFilterStatus(value);
+    onFilter({ priority: filterPriority, status: value });
+  };
+
+  const handleClear = () => {
+    setSearchTerm('');
+    setFilterPriority('all');
+    setFilterStatus('all');
+    onSearch('');
+    onFilter({ priority: 'all', status: 'all' });
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 mb-8 border border-gray-200 dark:border-gray-700">
+      <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">Search & Filter Issues</h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        {/* Search Bar */}
+        <div className="relative">
+          <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg px-4 py-2 border border-gray-300 dark:border-gray-600">
+            <FaSearch className="text-orange-500 mr-3" />
+            <input
+              type="text"
+              placeholder="Search by description..."
+              value={searchTerm}
+              onChange={handleSearch}
+              className="flex-1 bg-transparent outline-none text-gray-700 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400"
+            />
+          </div>
+        </div>
+
+        {/* Priority Filter */}
+        <select
+          value={filterPriority}
+          onChange={handlePriorityFilter}
+          className="bg-white dark:bg-gray-800 border-2 border-orange-500 dark:border-orange-600 rounded-lg px-4 py-2 text-gray-700 dark:text-gray-200 font-medium cursor-pointer hover:border-orange-600 transition"
+        >
+          <option value="all">All Priorities</option>
+          <option value="high">High Priority</option>
+          <option value="medium">Medium Priority</option>
+          <option value="low">Low Priority</option>
+        </select>
+
+        {/* Status Filter */}
+        <select
+          value={filterStatus}
+          onChange={handleStatusFilter}
+          className="bg-white dark:bg-gray-800 border-2 border-orange-500 dark:border-orange-600 rounded-lg px-4 py-2 text-gray-700 dark:text-gray-200 font-medium cursor-pointer hover:border-orange-600 transition"
+        >
+          <option value="all">All Status</option>
+          <option value="open">Open Issues</option>
+          <option value="closed">Closed Issues</option>
+        </select>
+      </div>
+
+      {/* Clear Button */}
+      <button
+        onClick={handleClear}
+        className="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg transition duration-300 ease-in-out shadow-md"
+      >
+        Clear Filters
+      </button>
+    </div>
+  );
+};
+
+export default SearchFilter;
+</file>
+
+<file path="src/components/SideBar/index.jsx">
+import { Link } from 'react-router-dom';
+import SidebarContent from '../SideBarContent';
+import { useAuth0 } from '@auth0/auth0-react';
+
+
+const SideBar = () => {
+  const { user } = useAuth0();
+
+  return (
+    <div className="fixed left-0 top-20 w-72 h-screen bg-white shadow z-40 border-r border-blue-100 flex flex-col overflow-y-auto">
+      {/* Branding Section */}
+      <div className="px-6 py-8 border-b border-blue-100 bg-white sticky top-0">
+        <div className='flex items-center gap-2'>
+          <span className='text-3xl'>🐛</span>
+          <h2 className='text-2xl font-bold text-blue-600'>
+            BugTracker
+          </h2>
+        </div>
+        <p className="text-xs text-gray-500 mt-2 ml-10">Issue Tracking System</p>
+
+        {/* User info (left) - shows only when available */}
+        {user && (user.name || user.picture) && (
+          <div className="mt-4 flex items-center gap-3 ml-2">
+            {user.picture ? (
+              <img src={user.picture} alt="avatar" className="h-8 w-8 rounded-full object-cover" />
+            ) : (
+              <div className="h-8 w-8 rounded-full bg-blue-50 flex items-center justify-center text-sm text-blue-600">{(user.name || '').split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
+            )}
+            {user.name && <span className="text-sm font-medium text-gray-800">{user.name}</span>}
+          </div>
+        )}
+      </div>
+      
+      {/* Navigation Section */}
+      <div className="flex-1 pt-6 px-3">
+        <SidebarContent />
+      </div>
+
+      {/* Footer */}
+      <div className="px-6 py-4 border-t border-blue-100 bg-white">
+        <p className="text-xs text-gray-500 text-center">
+          <span className='text-blue-600'>v1.0</span> • Bug Tracker Pro
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default SideBar;
+</file>
+
+<file path="src/components/SideBarContent/index.jsx">
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
+import { RiDashboardLine, RiBugFill, RiCheckboxCircleLine, RiCheckboxBlankCircleLine } from "react-icons/ri";
+import { AiOutlineForm } from "react-icons/ai";
+
+const SidebarContent = () => {
+  const location = useLocation();
+
+  const isActive = (path) => location.pathname === path;
+
+  const navItems = [
+    { path: '/', icon: RiDashboardLine, label: 'Dashboard' },
+    { path: '/bugs', icon: RiBugFill, label: 'All Issues' },
+    { path: '/mybugs', icon: RiCheckboxBlankCircleLine, label: 'My Issues' },
+    { path: '/report', icon: AiOutlineForm, label: 'Report Issue' },
+  ];
+
+  return (
+    <div className="space-y-1">
+      <nav className="space-y-1">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const active = isActive(item.path);
+          
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium relative overflow-hidden group ${
+                active
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'text-gray-700 hover:text-blue-600'
+              }`}
+            >
+              {!active && (
+                <div className='absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/10 transition-colors duration-200'></div>
+              )}
+              <Icon size={20} className='relative z-10' />
+              <span className='relative z-10'>{item.label}</span>
+              {active && (
+                <div className='ml-auto w-1 h-6 bg-white rounded-full'></div>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
+  );
+};
+
+export default SidebarContent;
+</file>
+
+<file path="src/components/StatsSummary/index.jsx">
+import React, { useState, useEffect } from 'react';
+
+const StatsSummary = ({ foundUserSub }) => {
+  const [stats, setStats] = useState({
+    totalBugs: 0,
+    openBugs: 0,
+    closedBugs: 0,
+    highPriority: 0,
+  });
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = () => {
+    fetch('http://localhost:9090/bugs')
+      .then((result) => result.json())
+      .then((data) => {
+        const totalBugs = data.length;
+        const openBugs = data.filter(bug => bug.active === true).length;
+        const closedBugs = data.filter(bug => bug.active === false).length;
+        const highPriority = data.filter(bug => bug.priority === 'high' && bug.active === true).length;
+
+        setStats({
+          totalBugs,
+          openBugs,
+          closedBugs,
+          highPriority,
+        });
+      })
+      .catch((error) => console.error('Error fetching stats:', error));
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <StatCard 
+        title="Total Issues" 
+        value={stats.totalBugs} 
+        color="from-blue-500 to-blue-600"
+        icon="📊"
+      />
+      <StatCard 
+        title="Open Issues" 
+        value={stats.openBugs} 
+        color="from-orange-500 to-orange-600"
+        icon="🔴"
+      />
+      <StatCard 
+        title="Closed Issues" 
+        value={stats.closedBugs} 
+        color="from-green-500 to-green-600"
+        icon="✅"
+      />
+      <StatCard 
+        title="High Priority" 
+        value={stats.highPriority} 
+        color="from-red-500 to-red-600"
+        icon="⚠️"
+      />
+    </div>
+  );
+};
+
+const StatCard = ({ title, value, color, icon }) => (
+  <div className={`bg-gradient-to-br ${color} rounded-lg shadow-lg p-6 text-white transform transition duration-300 hover:scale-105`}>
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-gray-100 text-sm font-medium">{title}</p>
+        <p className="text-4xl font-bold mt-2">{value}</p>
+      </div>
+      <div className="text-5xl">{icon}</div>
+    </div>
+  </div>
+);
+
+export default StatsSummary;
+</file>
+
+<file path="src/components/TopNavigation/index.jsx">
+import {
+  FaSearch,
+  FaMoon,
+  FaSun,
+} from 'react-icons/fa';
+import {RiLogoutBoxLine} from 'react-icons/ri'
+import { useAuth0 } from '@auth0/auth0-react';
+import useDarkMode from '../../hooks/useDarkMode';
+
+const TopNavigation = () => {
+  return (
+    <div className='fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-950 border-b border-gray-100 dark:border-gray-800 shadow-md backdrop-blur-sm bg-opacity-95 dark:bg-opacity-95'>
+      <div className='px-8 py-4 flex items-center justify-between'>
+        <div className='flex items-center gap-8'>
+          <div className='group cursor-pointer'>
+            <h1 className='text-3xl font-bold bg-gradient-orange bg-clip-text text-transparent hover:opacity-80 transition-opacity duration-300'>
+              🐛 BugTracker
+            </h1>
+            <div className='h-1 bg-gradient-orange rounded-full w-0 group-hover:w-full transition-all duration-500'></div>
+          </div>
+        </div>
+        
+        <div className='flex items-center gap-6'>
+          <ThemeIcon />
+          <div className='h-6 w-px bg-gray-200 dark:bg-gray-700'></div>
+          <UserCircle />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ThemeIcon = () => {
+  const [darkTheme, setDarkTheme] = useDarkMode();
+  const handleMode = () => setDarkTheme(!darkTheme);
+  return (
+    <button 
+      onClick={handleMode} 
+      className='p-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all duration-300 hover:scale-110'
+      title={darkTheme ? 'Switch to light mode' : 'Switch to dark mode'}
+    >
+      {darkTheme ? (
+        <FaSun size='18' className='text-yellow-500' />
+      ) : (
+        <FaMoon size='18' className='text-indigo-600' />
+      )}
+    </button>
+  );
+};
+
+const UserCircle = () => {
+  const { logout } = useAuth0();
+  return(
+    <button 
+      onClick={()=>logout()} 
+      className='p-2.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-xl transition-all duration-300 hover:scale-110 group'
+      title='Logout'
+    >
+      <RiLogoutBoxLine size='18' className='text-gray-600 dark:text-gray-400 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors' />
+    </button>
+  );
+};
+
+export default TopNavigation;
+</file>
+
+<file path="src/hooks/useDarkMode.jsx">
+import { useEffect, useState } from 'react';
+
+const useLocalStorage = (key, initialValue) => {
+  const [storedValue, setStoredValue] = useState(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      console.log(error);
+      return initialValue;
+    }
+  });
+
+  const setValue = (value) => {
+    try {
+      const valueToStore = value instanceof Function ? value(storedValue) : value;
+
+      setStoredValue(valueToStore);
+
+      window.localStorage.setItem(key, JSON.stringify(valueToStore));
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  return [storedValue, setValue];
+};
+
+const useDarkMode = () => {
+  const [enabled, setEnabled] = useLocalStorage('dark-theme', false);
+
+  useEffect(() => {
+    const className = 'dark';
+    const bodyClass = window.document.body.classList;
+
+    if (enabled) {
+      bodyClass.add(className);
+    } else {
+      bodyClass.remove(className);
+    }
+  }, [enabled]);
+
+  return [enabled, setEnabled];
+};
+
+export default useDarkMode;
+</file>
+
+<file path="src/index.css">
+@import url('https://fonts.googleapis.com/css2?family=Barriecito&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@import-normalize;
+@tailwind base;
+@tailwind components;
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+@layer components {
+  .sidebar-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 48px;
+    width: 48px;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    margin-left: auto;
+    margin-right: auto;
+    background: linear-gradient(to bottom right, #374151, #111827);
+    color: #fb923c;
+    border-radius: 1rem;
+    transition: all 0.3s linear;
+    cursor: pointer;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+
+  .sidebar-icon:hover {
+    background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+    color: white;
+    box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
+    transform: scale(1.1);
+  }
+
+  .widget {
+    background: white;
+    color: #111827;
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease-in-out;
+    border: 1px solid #f3f4f6;
+    padding: 1.5rem;
+  }
+
+  .dark .widget {
+    background: #111827;
+    color: white;
+    border-color: #1f2937;
+  }
+
+  .widget:hover {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    transform: scale(1.05);
+    border-color: #fed7aa;
+  }
+
+  .dark .widget:hover {
+    border-color: #f97316;
+  }
+
+  .sidebar-tooltip {
+    position: absolute;
+    width: auto;
+    padding: 0.5rem;
+    margin: 0.5rem;
+    min-width: max-content;
+    left: 56px;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    color: white;
+    background-color: #111827;
+    font-size: 0.75rem;
+    font-weight: 700;
+    transition: all 0.1s;
+    transform: scale(0);
+    transform-origin: left;
+  }
+
+  .sidebar-hr {
+    background: linear-gradient(to right, rgba(249, 115, 22, 0.3), transparent);
+    border: 1px solid rgba(249, 115, 22, 0.2);
+    border-radius: 9999px;
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+  }
+
+  .top-navigation-icon {
+    color: #4b5563;
+    margin-right: 0.75rem;
+    margin-left: 1rem;
+    transition: all 0.3s ease-in-out;
+    cursor: pointer;
+    transform: scale(1);
+  }
+
+  .dark .top-navigation-icon {
+    color: #9ca3af;
+  }
+
+  .top-navigation-icon:hover {
+    color: #f97316;
+    transform: scale(1.1);
+  }
+
+  .dark .top-navigation-icon:hover {
+    color: #fb923c;
+  }
+
+  .card-title {
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .dark .card-title {
+    color: #9ca3af;
+  }
+
+  .card-val {
+    font-size: 1.875rem;
+    font-weight: 700;
+    background: linear-gradient(to right, #f97316, #fb923c);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .search {
+    width: 20%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    background-color: #f3f4f6;
+    color: #4b5563;
+    padding: 0 0.75rem;
+    height: 40px;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease-in-out;
+    border: 1px solid #e5e7eb;
+  }
+
+  .dark .search {
+    background-color: #1f2937;
+    color: #9ca3af;
+    border-color: #374151;
+  }
+
+  .search:hover {
+    border-color: #fb923c;
+  }
+
+  .search:focus-within {
+    border-color: #f97316;
+  }
+
+  .search-input {
+    width: 100%;
+    font-weight: 500;
+    background: transparent;
+    outline: none;
+    color: #111827;
+    padding-left: 0.25rem;
+    border-radius: 0.5rem;
+  }
+
+  .dark .search-input {
+    color: #e5e7eb;
+  }
+
+  .search-input::placeholder {
+    color: #9ca3af;
+  }
+
+  .dark .search-input::placeholder {
+    color: #6b7280;
+  }
+
+  .filter-dropdown {
+    background-color: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    color: #111827;
+    padding: 0.5rem 0.75rem;
+    margin-left: 0.5rem;
+    transition: all 0.2s ease-in-out;
+    font-weight: 500;
+    font-size: 0.875rem;
+  }
+
+  .dark .filter-dropdown {
+    background-color: #1f2937;
+    border-color: #374151;
+    color: #e5e7eb;
+  }
+
+  .filter-dropdown:hover {
+    border-color: #f97316;
+    background-color: #fef3c7;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .filter-dropdown:hover {
+    border-color: #f97316;
+    background-color: #374151;
+  }
+
+  .filter-dropdown:focus {
+    border-color: #f97316;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+  }
+
+  .badge-low {
+    padding: 0.25rem 0.75rem;
+    display: inline-flex;
+    font-size: 0.75rem;
+    line-height: 1.25;
+    font-weight: 600;
+    border-radius: 9999px;
+    background-color: #dcfce7;
+    color: #166534;
+  }
+
+  .dark .badge-low {
+    background-color: #15803d;
+    color: #dcfce7;
+  }
+
+  .badge-medium {
+    padding: 0.25rem 0.75rem;
+    display: inline-flex;
+    font-size: 0.75rem;
+    line-height: 1.25;
+    font-weight: 600;
+    border-radius: 9999px;
+    background-color: #dbeafe;
+    color: #1e40af;
+  }
+
+  .dark .badge-medium {
+    background-color: #1e3a8a;
+    color: #dbeafe;
+  }
+
+  .badge-high {
+    padding: 0.25rem 0.75rem;
+    display: inline-flex;
+    font-size: 0.75rem;
+    line-height: 1.25;
+    font-weight: 600;
+    border-radius: 9999px;
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+
+  .dark .badge-high {
+    background-color: #7f1d1d;
+    color: #fee2e2;
+  }
+
+  .badge-open {
+    padding: 0.375rem 0.75rem;
+    display: inline-flex;
+    font-size: 0.75rem;
+    line-height: 1.25;
+    font-weight: 600;
+    border-radius: 9999px;
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+
+  .dark .badge-open {
+    background-color: #065f46;
+    color: #d1fae5;
+  }
+
+  .badge-closed {
+    padding: 0.375rem 0.75rem;
+    display: inline-flex;
+    font-size: 0.75rem;
+    line-height: 1.25;
+    font-weight: 600;
+    border-radius: 9999px;
+    background-color: #f3f4f6;
+    color: #1f2937;
+  }
+
+  .dark .badge-closed {
+    background-color: #374151;
+    color: #f3f4f6;
+  }
+
+  .button-primary {
+    background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+    color: white;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease-out;
+    cursor: pointer;
+    border: none;
+    display: inline-block;
+  }
+
+  .button-primary:hover {
+    box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
+    transform: scale(1.05);
+  }
+
+  .button-secondary {
+    background-color: #e5e7eb;
+    color: #111827;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease-out;
+    cursor: pointer;
+    border: none;
+    display: inline-block;
+  }
+
+  .dark .button-secondary {
+    background-color: #374151;
+    color: white;
+  }
+
+  .button-secondary:hover {
+    background-color: #d1d5db;
+  }
+
+  .dark .button-secondary:hover {
+    background-color: #4b5563;
+  }
+
+  .form-input {
+    appearance: none;
+    width: 100%;
+    background-color: #f3f4f6;
+    color: #111827;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    line-height: 1.5;
+    transition: all 0.2s;
+  }
+
+  .dark .form-input {
+    background-color: #374151;
+    color: white;
+    border-color: #4b5563;
+  }
+
+  .form-input:focus {
+    outline: none;
+    background-color: white;
+    border-color: #f97316;
+  }
+
+  .dark .form-input:focus {
+    background-color: #4b5563;
+    border-color: #f97316;
+  }
+
+  .form-select {
+    appearance: none;
+    width: 100%;
+    background-color: #f3f4f6;
+    color: #111827;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    line-height: 1.5;
+    transition: all 0.2s;
+  }
+
+  .dark .form-select {
+    background-color: #374151;
+    color: white;
+    border-color: #4b5563;
+  }
+
+  .form-select:focus {
+    outline: none;
+    background-color: white;
+    border-color: #f97316;
+  }
+
+  .dark .form-select:focus {
+    background-color: #4b5563;
+    border-color: #f97316;
+  }
+
+  .table-header {
+    background: linear-gradient(to right, #f9fafb 0%, #f3f4f6 100%);
+  }
+
+  .dark .table-header {
+    background: linear-gradient(to right, #1f2937 0%, #111827 100%);
+  }
+
+  .table-row {
+    transition: background-color 0.2s;
+  }
+
+  .table-row:hover {
+    background-color: #fef3c7;
+  }
+
+  .dark .table-row:hover {
+    background-color: rgba(249, 115, 22, 0.05);
+  }
+}
+
+@tailwind utilities;
+
+/* Custom styling for bugtracker */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans',
+    'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #1f2937;
+}
+
+body.dark {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #e2e8f0;
+}
+
+/* Smooth scrollbar for dark mode */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-track:dark {
+  background: #1a1a2e;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #f97316 0%, #fb923c 100%);
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #ea580c 0%, #f97316 100%);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #f97316 0%, #fb923c 100%);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #ea580c 0%, #f97316 100%);
+}
+
+/* Animations */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slideDown 0.3s ease-out;
+}
+</file>
+
+<file path="src/index.js">
+import React from 'react';
+import ReactDOM from 'react-dom';
+import './index.css'
+import App from './App';
+import { Auth0Provider } from '@auth0/auth0-react';
+
+const domain = process.env.REACT_APP_AUTH0_DOMAIN;
+const clientId = process.env.REACT_APP_AUTH0_CLIENT_ID;
+
+ReactDOM.render(
+  <Auth0Provider
+    domain={domain}
+    clientId={clientId}
+    redirectUri={window.location.origin}>
+    <App />
+  </Auth0Provider>,
+  document.getElementById('root')
+);
+</file>
+
+<file path="src/services/BugsService.js">
+const baseURL = 'http://localhost:9090/bugs/';
+
+export const postBug = (payload, selectedReporter) => {
+    payload.reporter = selectedReporter;
+    return fetch(baseURL, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json'}
+    })
+    .then(res => res.json())
+}
+
+export const deleteBug = (id) => {
+    return fetch(baseURL + id, {
+        method: 'DELETE',
+        headers: {'Content-Type': 'application/json'}
+    })
+}
+
+export const patchBug = (payload) => {
+    return fetch(baseURL + payload.id, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+}
+</file>
+
+<file path="src/services/SortAndFilter.js">
+export const filterByActive = (bugList, Active = true) => {
+    return bugList.filter((bug) => bug.active === Active);
+}
+
+export const filterByPriority = (bugList, priority="high") => {
+    return bugList.filter((bug) => bug.priority === priority);
+}
+
+export const filterByUser = (bugList, userAuth0Sub) => {
+    const filteredBugList = [];
+    for(const bug of bugList){
+        if(bug.reporter.auth0Sub === userAuth0Sub){
+            filteredBugList.push(bug);
+        }
+        else{
+            for(const assignee of bug.assignees){
+                if(assignee.auth0Sub === userAuth0Sub){
+                    filteredBugList.push(bug);
+                }
+            }
+        };
+    }
+    return filteredBugList;
+}
+
+export const sortByDate = (bugList, newestFirst = true) => {
+    if(newestFirst){
+        return bugList.sort((a, b) => Date.parse(b.dateReported) - Date.parse(a.dateReported));
+    }
+    else{
+        return bugList.sort((a, b) => Date.parse(a.dateReported)  - Date.parse(b.dateReported));
+    }
+}
+
+export const sortByPriority = (bugList, highestPriorityFirst = true) => {
+    const order = ["high", "medium", "low"];
+    if(highestPriorityFirst){
+        return bugList.sort((a, b) => order.indexOf(a.priority) - order.indexOf(b.priority));
+    }
+    else{
+        return bugList.sort((a, b) => order.indexOf(b.priority) - order.indexOf(a.priority));
+    }
+}
+
+export const filterForNoAssignees = (bugList) => {
+    const filteredBugList = [];
+    for(const bug of bugList){
+        if(bug.assignees.length === 0){
+            filteredBugList.push(bug);
+        }
+    }
+    return filteredBugList;
+}
+</file>
+
+</files>
