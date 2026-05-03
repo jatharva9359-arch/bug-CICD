@@ -2,12 +2,12 @@ version: "3"
 
 services:
   backend:
-    build: ./server
+    build: BugTracker-main/server
     ports:
       - "8080:8080"
 
   frontend:
-    build: ./client
+    build: BugTracker-main/client
     ports:
       - "3000:80"
 
